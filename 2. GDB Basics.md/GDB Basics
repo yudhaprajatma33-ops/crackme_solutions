@@ -1,0 +1,224 @@
+# GDB Basics Write-up
+
+## Informasi
+
+- *Materi* : GDB Basics
+- *Platform* : https://crackmes.one
+- *Tujuan* : Menemukan password yang benar agar program menampilkan flag.
+- *Tools*
+  - Cutter
+  - GDB
+  - GCC
+  - Linux (Ubuntu/Kali)
+
+---
+
+# Tujuan
+
+Melakukan analisis terhadap sebuah binary untuk mengetahui password yang digunakan sebagai syarat memperoleh flag.
+
+---
+
+# Langkah 1 - Membuka Binary di Cutter
+
+Buka file binary menggunakan Cutter.
+
+
+File → Open
+
+
+Setelah proses analisis selesai, buka fungsi *main()*.
+
+---
+
+# Langkah 2 - Analisis Fungsi main()
+
+Pada graph fungsi main() terlihat:
+
+- Program meminta user memasukkan sebuah angka.
+- Nilai input kemudian dibandingkan dengan sebuah variabel bernama:
+
+
+dword[var_ch]
+
+
+Apabila kedua nilai sama, program akan menampilkan flag.
+
+Terlihat proses perbandingan berada di sekitar alamat:
+
+
+0x000011ad
+
+
+Sedangkan input berada di:
+
+
+0x00001181
+
+---
+
+# Langkah 3 - Menelusuri Nilai var_ch
+
+Selanjutnya lihat kode pada alamat:
+
+
+0x0000115d
+
+
+Terlihat bahwa variabel var_ch memiliki nilai awal:
+
+c
+var_ch = 2;
+
+
+Kemudian dilakukan perulangan.
+
+Secara sederhana algoritmanya menjadi:
+
+c
+var_ch = 2;
+
+for(i = 2; i <= 19; i++)
+    var_ch *= i;
+
+
+Artinya program sedang menghitung hasil perkalian bertingkat (faktorial yang dimulai dari 2).
+
+---
+
+# Langkah 4 - Membuat Program untuk Menghitung Nilai
+
+Daripada menghitung manual sebanyak 18 iterasi, dibuat program C sederhana.
+
+c
+#include <stdio.h>
+#include <inttypes.h>
+
+int main()
+{
+    int64_t var_10h;
+    uint64_t var_ch;
+
+    var_ch = 2;
+    var_10h = 2;
+
+    while (var_10h <= 0x13)
+    {
+        var_ch *= var_10h;
+        var_10h++;
+    }
+
+    printf("%" PRIu64 "\n", var_ch);
+    printf("%d\n", (int)var_ch);
+
+    return 0;
+}
+
+
+Compile:
+
+bash
+gcc solve.c -o solve
+
+
+Jalankan:
+
+bash
+./solve
+
+
+Output:
+
+
+243290200817664000
+219283456
+
+---
+
+# Langkah 5 - Menguji Password
+
+Jalankan binary.
+
+bash
+./a.out
+
+
+Masukkan password pertama.
+
+
+243290200817664000
+
+
+Output:
+
+
+There is the flag : I_LOVE_YOU
+
+
+Karena program juga mencetak hasil konversi menjadi integer 32-bit, maka password kedua juga valid.
+
+Masukkan:
+
+
+219283456
+
+
+Output:
+
+
+There is the flag : I_LOVE_YOU
+---
+
+# Penjelasan
+
+Variabel var_ch bertipe:
+
+c
+uint64_t
+
+
+Sehingga hasil perkalian menghasilkan angka:
+
+
+243290200817664000
+
+
+Namun ketika nilai tersebut dicetak sebagai int (32-bit), terjadi *integer overflow*, sehingga menghasilkan:
+
+
+219283456
+
+
+Karena proses validasi program hanya membandingkan nilai 32-bit pada kondisi tertentu, kedua angka tersebut dianggap benar.
+
+---
+
+# Password
+
+Password valid:
+
+
+243290200817664000
+
+
+atau
+
+
+219283456
+
+
+---
+
+# Flag
+
+
+I_LOVE_YOU
+
+
+---
+
+# Kesimpulan
+
+Pada challenge ini dilakukan analisis statis menggunakan Cutter untuk memahami alur program. Setelah diketahui bahwa password berasal dari hasil perkalian bertingkat, dibuat program C sederhana untuk menghitung nilainya. Hasil analisis menunjukkan terdapat dua password yang valid karena adanya *integer overflow* pada representasi bilangan 32-bit. Dengan memasukkan salah satu password tersebut, program berhasil menampilkan flag.
+
+---
